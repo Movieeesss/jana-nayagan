@@ -9,7 +9,7 @@ from selenium.webdriver.common.by import By
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "Madurai Jan 9th Detailed Monitor is LIVE"
+def home(): return "Trichy 24/7 Monitor is Active"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
@@ -18,11 +18,12 @@ def run_web_server():
 # --- CONFIGURATION ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-# Specific Madurai URL for January 9, 2026
-TARGET_URL = "https://in.bookmyshow.com/movies/madurai/jana-nayagan/buytickets/ET00430817/20260109"
+# Trichy URL for Jana Nayagan
+TRICHY_URL = "https://in.bookmyshow.com/movies/trichy/jana-nayagan/ET00430817"
 IST = pytz.timezone('Asia/Kolkata')
 
 def send_telegram(msg):
+    # Sends a formatted Markdown message to Telegram
     requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", 
                   json={"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"})
 
@@ -33,23 +34,22 @@ def start_monitoring():
     options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     
-    send_telegram("🧐 *Detailed Monitor Active:* Tracking all theaters & showtimes for Jan 9th.")
+    send_telegram("🚀 *Trichy Monitor Started*\nChecking for new theaters every 5 minutes.")
     
-    last_data = {} # To track {TheaterName: [Showtimes]}
+    last_theater_data = {} # Stores {TheaterName: [Showtimes]}
 
     while True:
         try:
-            driver.get(TARGET_URL)
-            time.sleep(8) # Wait for React content to load
+            driver.get(TRICHY_URL)
+            time.sleep(10) # Wait for theaters to load
             
-            # Find theater containers
-            venue_elements = driver.find_elements(By.CLASS_NAME, "list")
+            # Find theater containers on BookMyShow
+            venues = driver.find_elements(By.CLASS_NAME, "list")
             current_data = {}
 
-            for venue in venue_elements:
+            for venue in venues:
                 try:
                     name = venue.find_element(By.CLASS_NAME, "__venue-name").text
-                    # Find all showtimes for this specific theater
                     times = venue.find_elements(By.CLASS_NAME, "showtime-pill")
                     showtimes = [t.text.replace('\n', ' ') for t in times if t.text]
                     if name:
@@ -57,22 +57,28 @@ def start_monitoring():
                 except:
                     continue
 
-            # Check for changes
-            if current_data and current_data != last_data:
-                msg = "🎭 *THEATER & SHOWTIME UPDATE!*\n\n"
-                for theater, times in current_data.items():
-                    show_str = ", ".join(times) if times else "No times listed"
-                    msg += f"🏛️ *{theater}*\n🕒 {show_str}\n\n"
+            ist_now = datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')
+
+            # 1. Check for NEW theaters or CHANGED showtimes
+            if current_data and current_data != last_theater_data:
+                msg = f"🤖 *Jana Nayagan Trichy Update*\n"
+                msg += f"🕒 IST: {ist_now}\n\n"
                 
-                msg += f"🔗 [Book on BookMyShow]({TARGET_URL})"
+                for theater, times in current_data.items():
+                    show_str = ", ".join(times) if times else "Bookings Opening Soon"
+                    msg += f"🏛️ *{theater}*\n✅ {show_str}\n\n"
+                
+                msg += f"🔗 [Book Now]({TRICHY_URL})"
                 send_telegram(msg)
-                last_data = current_data
+                last_theater_data = current_data
             
-            print(f"Checked at {datetime.now(IST).strftime('%H:%M:%S')} - Theaters found: {len(current_data)}")
-            time.sleep(300) # 5 Minutes
+            # 2. Hourly Status Check (Like your image)
+            print(f"[{ist_now}] Checked Trichy. Theaters found: {len(current_data)}")
+            
+            time.sleep(300) # Wait exactly 5 minutes
             
         except Exception as e:
-            print(f"Error during scrape: {e}")
+            print(f"Error: {e}")
             time.sleep(60)
 
 if __name__ == "__main__":
