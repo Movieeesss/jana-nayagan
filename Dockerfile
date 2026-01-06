@@ -12,15 +12,15 @@ RUN apt-get update && apt-get install -y \
     && apt-get update && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# Set working directory inside the container
 WORKDIR /app
 
 # Copy requirements and install them
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your code
+# Copy the rest of your application code
 COPY . .
 
-# Run the app
-CMD ["python", "main.py"]
+# FINAL LINE: Start the app using Gunicorn WSGI server
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "main:app"]
